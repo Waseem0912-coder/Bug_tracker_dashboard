@@ -1,155 +1,177 @@
 // src/pages/BugListPage.jsx
-import React, { useState, useEffect } from 'react';
-import { Link as RouterLink } from 'react-router-dom'; // For linking to detail page
-import { getBugs } from '../services/api'; // Import API function
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
+import { getBugs } from '../services/api';
 import {
   Container, Typography, Box, CircularProgress, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, Paper, Link, Chip, TablePagination // Import table components
+  TableRow, Paper, Link, Chip, TablePagination, Tooltip
 } from '@mui/material';
 
-// Helper function to determine chip color based on status/priority
+// Helper function for chip colors
 const getChipColor = (value, type) => {
-  value = value?.toLowerCase();
-  type = type?.toLowerCase();
-
-  if (type === 'status') {
-    if (value === 'open') return 'warning';
-    if (value === 'in progress') return 'info';
-    if (value === 'resolved' || value === 'closed') return 'success';
-  } else if (type === 'priority') {
-    if (value === 'high') return 'error';
-    if (value === 'medium') return 'warning';
-    if (value === 'low') return 'info';
-  }
-  return 'default'; // Default grey chip
+    value = value?.toLowerCase();
+    type = type?.toLowerCase();
+    if (type === 'status') {
+        if (value === 'open') return 'warning';
+        if (value === 'in progress') return 'info';
+        if (value === 'resolved' || value === 'closed') return 'success';
+    } else if (type === 'priority') {
+        if (value === 'high') return 'error';
+        if (value === 'medium') return 'warning';
+        if (value === 'low') return 'info';
+    }
+    return 'default';
 };
 
+// Helper for date formatting
+const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+        const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        return new Date(dateString).toLocaleString(undefined, options);
+    } catch (e) { return dateString; }
+};
 
 function BugListPage() {
-  const [bugs, setBugs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [page, setPage] = useState(0); // Corresponds to page_number - 1 for MUI TablePagination
-  const [rowsPerPage, setRowsPerPage] = useState(10); // Match Django's PAGE_SIZE or allow selection
-  const [totalBugs, setTotalBugs] = useState(0); // Total count from API
+    const [bugs, setBugs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [page, setPage] = useState(0); // 0-based index for MUI component
+    const [rowsPerPage, setRowsPerPage] = useState(10); // Default page size
+    const [totalBugs, setTotalBugs] = useState(0);
 
-  // Fetch bugs when page or rowsPerPage changes
-  useEffect(() => {
-    const fetchBugs = async () => {
-      setLoading(true);
-      setError('');
-      try {
-         // API uses 1-based indexing for page, MUI uses 0-based
-        const data = await getBugs(page + 1);
-        setBugs(data.results || []); // Ensure results is an array
-        setTotalBugs(data.count || 0); // Get total count
-      } catch (err) {
-        setError('Failed to fetch bugs. Please try again later.');
-        console.error("Fetch bugs error:", err);
-      } finally {
-        setLoading(false);
-      }
+    // Use useCallback to memoize fetch function if needed, though useEffect handles dependencies
+    const fetchBugs = useCallback(async (currentPage, currentRowsPerPage) => {
+        setLoading(true);
+        setError('');
+        try {
+            // API page is 1-based, MUI page is 0-based
+            const data = await getBugs(currentPage + 1);
+            setBugs(data.results);
+            setTotalBugs(data.count);
+        } catch (err) {
+            console.error("Fetch bugs error:", err);
+            setError('Failed to fetch bugs. Check connection or login status.');
+            // Clear data on error
+            setBugs([]);
+            setTotalBugs(0);
+        } finally {
+            setLoading(false);
+        }
+    }, []); // No dependencies, API function doesn't change
+
+    // Effect to fetch data when page or rowsPerPage changes
+    useEffect(() => {
+        console.log(`Fetching page ${page}, rows ${rowsPerPage}`);
+        fetchBugs(page, rowsPerPage);
+    }, [page, rowsPerPage, fetchBugs]); // Include fetchBugs if memoized
+
+    // Handlers for MUI TablePagination
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
     };
 
-    fetchBugs();
-  }, [page, rowsPerPage]); // Re-fetch when page or rowsPerPage changes
+    const handleChangeRowsPerPage = (event) => {
+        const newRowsPerPage = parseInt(event.target.value, 10);
+        setRowsPerPage(newRowsPerPage);
+        setPage(0); // Go back to first page when changing rows per page
+    };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
+    return (
+        <Container maxWidth="lg"> {/* Or set maxWidth={false} for full width */}
+            <Typography variant="h4" gutterBottom component="h1" sx={{ mb: 3 }}>
+                Bug Report List
+            </Typography>
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0); // Reset to first page when changing rows per page
-  };
+            {/* Display Loading Indicator */}
+            {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
+                    <CircularProgress />
+                </Box>
+            )}
 
+            {/* Display Error Message */}
+            {!loading && error && (
+                <Alert severity="error" sx={{ my: 2 }}>
+                    {error}
+                </Alert>
+            )}
 
-  return (
-    <Container maxWidth="lg">
-      <Typography variant="h4" gutterBottom component="h1">
-        Bug List
-      </Typography>
-
-      {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
-          <CircularProgress />
-        </Box>
-      )}
-
-      {error && (
-        <Alert severity="error" sx={{ my: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {!loading && !error && (
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-          <TableContainer sx={{ maxHeight: 640 }}> {/* Optional: Set max height for scroll */}
-            <Table stickyHeader aria-label="sticky table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Bug ID</TableCell>
-                  <TableCell>Subject</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Priority</TableCell>
-                  <TableCell>Updated At</TableCell> {/* Added Updated At */}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {bugs.length === 0 ? (
-                     <TableRow>
-                         <TableCell colSpan={5} align="center">
-                             No bugs found.
-                         </TableCell>
-                     </TableRow>
-                 ) : (
-                    bugs.map((bug) => (
-                    <TableRow hover role="checkbox" tabIndex={-1} key={bug.id}>
-                      <TableCell>
-                        {/* Link to detail page */}
-                        <Link component={RouterLink} to={`/bugs/${bug.bug_id}`} underline="hover">
-                          {bug.bug_id}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{bug.subject}</TableCell>
-                      <TableCell>
-                         <Chip
-                            label={bug.status || 'N/A'}
-                            color={getChipColor(bug.status, 'status')}
-                            size="small"
-                          />
-                      </TableCell>
-                      <TableCell>
-                         <Chip
-                            label={bug.priority || 'N/A'}
-                            color={getChipColor(bug.priority, 'priority')}
-                            size="small"
-                          />
-                      </TableCell>
-                       <TableCell>
-                            {/* Format date nicely */}
-                           {new Date(bug.updated_at).toLocaleString()}
-                       </TableCell>
-                    </TableRow>
-                  ))
-                 )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <TablePagination
-            rowsPerPageOptions={[10, 25, 50]} // Options for rows per page
-            component="div"
-            count={totalBugs} // Total number of bugs from API
-            rowsPerPage={rowsPerPage}
-            page={page} // Current page (0-based)
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-          />
-        </Paper>
-      )}
-    </Container>
-  );
+            {/* Display Table when not loading and no error */}
+            {!loading && !error && (
+                <Paper sx={{ width: '100%', mb: 2 }}> {/* Added margin bottom */}
+                    <TableContainer> {/* Removed fixed height for now */}
+                        <Table stickyHeader aria-label="bug list table">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Bug ID</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Subject</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Priority</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Last Updated</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {bugs.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                                            No bugs found matching your criteria.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    bugs.map((bug) => (
+                                        <TableRow
+                                            hover
+                                            key={bug.id} // Use stable DB ID for key
+                                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }} // Clean look
+                                        >
+                                            <TableCell component="th" scope="row">
+                                                <Tooltip title="View Details">
+                                                    <Link component={RouterLink} to={`/bugs/${bug.bug_id}`} underline="hover">
+                                                        {bug.bug_id}
+                                                    </Link>
+                                                </Tooltip>
+                                            </TableCell>
+                                            <TableCell>{bug.subject}</TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={bug.status || 'N/A'}
+                                                    color={getChipColor(bug.status, 'status')}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={bug.priority || 'N/A'}
+                                                    color={getChipColor(bug.priority, 'priority')}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                {formatDate(bug.updated_at)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                    {/* Pagination Component */}
+                    <TablePagination
+                        rowsPerPageOptions={[10, 25, 50]}
+                        component="div" // Important for layout
+                        count={totalBugs}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                        // sx={{ borderTop: (theme) => `1px solid ${theme.palette.divider}` }} // Optional top border
+                    />
+                </Paper>
+            )}
+        </Container>
+    );
 }
 
 export default BugListPage;

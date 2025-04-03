@@ -1,21 +1,23 @@
 // src/contexts/AuthContext.jsx
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { loginUser as apiLoginUser } from '../services/api'; // Import login function
+import { loginUser as apiLoginUser, logoutUser as apiLogoutUser } from '../services/api';
 
-// Create the context
 const AuthContext = createContext(null);
 
-// Create the provider component
 export const AuthProvider = ({ children }) => {
-  const [accessToken, setAccessToken] = useState(localStorage.getItem('access_token'));
-  const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token'));
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token')); // Initial check
-  const [isLoading, setIsLoading] = useState(false); // For login process
-  // We don't store user details for now, but could add later: const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(() => localStorage.getItem('access_token')); // Initialize from localStorage
+  const [refreshToken, setRefreshToken] = useState(() => localStorage.getItem('refresh_token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('access_token'));
+  const [authLoading, setAuthLoading] = useState(false); // Loading state specifically for auth actions
 
-  // --- Login Function ---
+  // Update isAuthenticated whenever accessToken changes
+  useEffect(() => {
+      setIsAuthenticated(!!accessToken);
+  }, [accessToken]);
+
+
   const login = useCallback(async (username, password) => {
-    setIsLoading(true);
+    setAuthLoading(true);
     try {
       const data = await apiLoginUser(username, password);
       if (data.access && data.refresh) {
@@ -23,64 +25,60 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('refresh_token', data.refresh);
         setAccessToken(data.access);
         setRefreshToken(data.refresh);
-        setIsAuthenticated(true);
-        setIsLoading(false);
-        return true; // Indicate success
+        setAuthLoading(false);
+        return true; // Success
       } else {
-        // Should not happen if API is correct, but handle defensively
-        throw new Error('Login failed: No tokens received.');
+        throw new Error('Login failed: Invalid response from server.');
       }
     } catch (error) {
-      console.error("Login error in context:", error);
-      // Clear any potentially stale tokens on login failure
+      // Clear tokens on any login error
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       setAccessToken(null);
       setRefreshToken(null);
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      // Rethrow or return error info for the component
-      throw error; // Let the login page handle displaying the error
+      setAuthLoading(false);
+      throw error; // Let login page handle displaying specific error
     }
-  }, []); // Empty dependency array, function doesn't change
+  }, []);
 
-  // --- Logout Function ---
-  const logout = useCallback(() => {
-    // TODO: Add call to backend /api/token/blacklist/ if implementing blacklisting
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    setAccessToken(null);
-    setRefreshToken(null);
-    setIsAuthenticated(false);
-    // setUser(null); // Clear user info if storing it
-    // No loading state needed for simple logout
-    console.log("User logged out");
-  }, []); // Empty dependency array
+  const logout = useCallback(async () => {
+      setAuthLoading(true); // Optional: show loading during logout
+      const tokenToBlacklist = refreshToken; // Grab token before clearing state
+      console.log("Logging out...");
 
-    // --- Check Auth on Load (Optional but good) ---
-    // You could add a useEffect here to verify the token with the backend
-    // on initial load, but for now, trusting localStorage is simpler.
-    // useEffect(() => {
-    //   const checkToken = async () => { ... verify token ... };
-    //   if (accessToken) checkToken();
-    // }, [accessToken]); // Run when token changes (e.g. on load)
+      // Clear local state and storage immediately
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setAccessToken(null);
+      setRefreshToken(null);
+
+      // Attempt to blacklist the token on the backend (fire and forget)
+      if (tokenToBlacklist) {
+          try {
+             await apiLogoutUser(tokenToBlacklist);
+          } catch (e) {
+             // Log blacklist error but proceed with logout
+             console.error("Blacklist API call failed during logout:", e);
+          }
+      }
+      setAuthLoading(false); // Finish loading state
+      console.log("Logout complete.");
+
+  }, [refreshToken]); // Depends on refreshToken for blacklisting
 
 
-  // Value provided by the context
   const value = {
     isAuthenticated,
-    accessToken,
-    refreshToken,
-    isLoading, // Specifically login loading state
+    accessToken, // Expose if needed, but usually just isAuthenticated is enough
+    authLoading,
     login,
     logout,
-    // user, // Expose user if storing it
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use the AuthContext
+// Custom hook to consume context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -88,6 +86,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// Export the context itself if needed (less common)
-// export default AuthContext;

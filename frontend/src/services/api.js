@@ -1,143 +1,100 @@
 // src/services/api.js
 import axios from 'axios';
 
-// --- Configuration ---
-
-// Base URL for your Django API (Ensure this matches your backend setup)
+// Base URL for your Django API
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
-// Create an Axios instance
+// Create Axios instance
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // Request timeout: 10 seconds
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json', // Explicitly accept JSON responses
+    'Accept': 'application/json',
   },
 });
 
-// --- Interceptors ---
-
-// Request Interceptor: Dynamically injects the JWT access token into the Authorization header for authenticated requests.
+// Request Interceptor (adds token)
 apiClient.interceptors.request.use(
   (config) => {
-    // Retrieve the access token from localStorage (or your chosen storage)
     const token = localStorage.getItem('access_token');
     if (token) {
-      // If a token exists, add it as a Bearer token to the Authorization header
       config.headers['Authorization'] = `Bearer ${token}`;
     }
-    return config; // Return the modified config
+    return config;
   },
   (error) => {
-    // Handle errors during request configuration
     console.error('Axios request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
-// Response Interceptor: Handles responses, logging errors and potentially refreshing tokens.
+// Response Interceptor (basic error logging + basic 401 handling)
 apiClient.interceptors.response.use(
-  (response) => {
-    // Any status code within the range of 2xx triggers this function.
-    // Simply return the successful response.
-    return response;
-  },
-  async (error) => { // Make the interceptor async to await refresh
-    // Any status codes outside the range of 2xx triggers this function.
+  (response) => response, // Pass through success
+  async (error) => { // Make async for refresh logic later
     console.error('API Response Error:', error.response || error.message || error);
-
     const originalRequest = error.config;
 
-    // --- JWT Token Refresh Logic ---
-    // Check if it's a 401 Unauthorized error and if we haven't already tried refreshing for this request.
+    // Basic 401 check (can add full refresh logic later if needed)
     if (error.response?.status === 401 && !originalRequest._retry) {
-        console.log("Attempting token refresh due to 401...");
-        originalRequest._retry = true; // Mark that we've attempted a retry
-
-        const refreshToken = localStorage.getItem('refresh_token');
-
-        if (refreshToken) {
-            try {
-                // Use a separate axios instance or direct axios call for refresh
-                // to avoid recursive interceptor loops if refresh itself fails with 401.
-                const response = await axios.post(`${API_BASE_URL}/token/refresh/`, { refresh: refreshToken });
-
-                if (response.status === 200) {
-                    // Refresh successful: Update tokens in storage
-                    localStorage.setItem('access_token', response.data.access);
-                    // Note: If backend rotates refresh tokens and sends a new one, update it too:
-                    // if (response.data.refresh) { localStorage.setItem('refresh_token', response.data.refresh); }
-
-                    console.log("Token refresh successful. Retrying original request.");
-
-                    // Update the authorization header for the default apiClient instance and the original request
-                    apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + response.data.access;
-                    originalRequest.headers['Authorization'] = 'Bearer ' + response.data.access;
-
-                    // Retry the original request with the new token
-                    return apiClient(originalRequest);
-                }
-            } catch (refreshError) {
-                 console.error("Token refresh request failed:", refreshError.response?.data || refreshError.message);
-                 // Refresh failed: Clear tokens, trigger logout (e.g., redirect, update context)
-                 localStorage.removeItem('access_token');
-                 localStorage.removeItem('refresh_token');
-                 // Example: Redirect to login or dispatch a logout event
-                 // Consider dispatching a custom event that the AuthContext can listen for.
-                 window.location.href = '/login'; // Simple redirect
-                 return Promise.reject(refreshError); // Reject the original request's promise
-            }
-        } else {
-            console.log("No refresh token found, cannot refresh.");
-             // If no refresh token, likely need to log in again.
-             // Redirect or dispatch logout event here as well.
-             localStorage.removeItem('access_token');
-             localStorage.removeItem('refresh_token');
-             window.location.href = '/login'; // Simple redirect
-        }
+       console.warn("Received 401 Unauthorized. Token might be expired or invalid.");
+       // TODO: Implement token refresh logic here if desired
+       // For now, just clear tokens and redirect
+       localStorage.removeItem('access_token');
+       localStorage.removeItem('refresh_token');
+       // This simple redirect might lose context, a better approach uses context/events
+       if (window.location.pathname !== '/login') {
+           window.location.href = '/login';
+       }
     }
-    // ----------------------------------------
-
-    // For errors other than 401 or if refresh attempt fails, just reject the promise.
     return Promise.reject(error);
   }
 );
 
-
 // --- API Call Functions ---
 
-/**
- * Logs in a user by obtaining JWT tokens.
- * @param {string} username - The user's username.
- * @param {string} password - The user's password.
- * @returns {Promise<object>} Promise resolving with token data { access, refresh }.
- */
 export const loginUser = async (username, password) => {
   try {
     const response = await apiClient.post('/token/', { username, password });
-    return response.data;
+    return response.data; // { access, refresh }
   } catch (error) {
-    // Error is already logged by interceptor, just re-throw
+    console.error("Login API error:", error.response?.data || error.message);
     throw error;
   }
 };
 
+// Optional: Blacklist function for logout
+export const logoutUser = async (refreshToken) => {
+    if (!refreshToken) return;
+    try {
+        await apiClient.post('/token/blacklist/', { refresh: refreshToken });
+        console.log("Refresh token blacklisted.");
+    } catch (error) {
+        console.error("Error blacklisting token:", error.response?.data || error.message);
+    }
+};
+
+// --- Bug API Calls --- ADDED/UPDATED THESE ---
+
 /**
  * Fetches a paginated list of bugs.
  * @param {number} [page=1] - The page number (1-based index for API).
- * @param {number} [pageSize=10] - Optional: Items per page (if backend supports).
  * @returns {Promise<object>} Promise resolving with { count, next, previous, results }.
  */
-export const getBugs = async (page = 1, pageSize = 10) => {
+export const getBugs = async (page = 1) => {
   try {
-    const response = await apiClient.get('/bugs/', {
-      params: { page } // Django PageNumberPagination uses 'page'
-      // params: { page: page, page_size: pageSize } // If using LimitOffsetPagination or custom param
-    });
-    return response.data;
+    // Django PageNumberPagination uses 'page' query parameter
+    const response = await apiClient.get('/bugs/', { params: { page } });
+    // Basic validation of expected structure
+    if (response.data && typeof response.data.count === 'number' && Array.isArray(response.data.results)) {
+        return response.data;
+    } else {
+        console.error("Unexpected format for bugs list response:", response.data);
+        throw new Error("Invalid data format received from server.");
+    }
   } catch (error) {
-    // Error is already logged by interceptor, just re-throw
+    // Error logged by interceptor, re-throw for component handling
     throw error;
   }
 };
@@ -154,51 +111,24 @@ export const getBugById = async (bugId) => {
       throw error;
   }
   try {
+    // Fetch specific bug by its unique bug_id field used in the URL
     const response = await apiClient.get(`/bugs/${bugId}/`);
-    return response.data;
+    return response.data; // Return the bug object
   } catch (error) {
-    // Error is already logged by interceptor, just re-throw
+    // Error logged by interceptor, re-throw for component handling
     throw error;
   }
 };
 
-/**
- * Fetches aggregated bug modification counts per date.
- * @returns {Promise<Array<object>>} Promise resolving with array like [{ date: "YYYY-MM-DD", count: N }].
- */
+// --- Dashboard API Call --- (Placeholder for Part 3) ---
 export const getBugModifications = async () => {
-  try {
-    const response = await apiClient.get('/bug_modifications/');
-    // Ensure data is an array, default to empty array if not or null
-    return Array.isArray(response.data) ? response.data : [];
-  } catch (error) {
-    // Error is already logged by interceptor, just re-throw
-    throw error;
-  }
+    console.warn("getBugModifications not fully implemented yet.");
+    // try {
+    //   const response = await apiClient.get('/bug_modifications/');
+    //   return Array.isArray(response.data) ? response.data : [];
+    // } catch (error) { throw error; }
+    return Promise.resolve([]); // Return empty array for now
 };
 
-/**
- * Attempts to blacklist a JWT refresh token on the backend.
- * Should be called during the logout process.
- * @param {string} refreshToken - The refresh token to blacklist.
- * @returns {Promise<void>}
- */
-export const logoutUser = async (refreshToken) => {
-    if (!refreshToken) {
-        console.log("No refresh token provided for blacklisting.");
-        return; // Nothing to do
-    }
-    try {
-        // Assumes you have the '/token/blacklist/' endpoint configured in Django
-        await apiClient.post('/token/blacklist/', { refresh: refreshToken });
-        console.log("Refresh token successfully blacklisted.");
-    } catch (error) {
-        // Log error but don't necessarily block frontend logout if this fails
-        console.error("Error blacklisting token:", error.response?.data || error.message);
-        // This might fail if the token is already expired or invalid, which is often ok during logout.
-    }
-};
 
-// Export the configured apiClient instance if needed for advanced use cases,
-// but generally prefer using the exported functions.
 export default apiClient;

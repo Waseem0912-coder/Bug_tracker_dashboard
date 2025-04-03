@@ -1,155 +1,125 @@
 // src/pages/BugDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { getBugById } from '../services/api'; // Import the API function
+import { getBugById } from '../services/api';
 import {
   Container, Typography, Box, CircularProgress, Alert,
   Card, CardContent, CardHeader, Grid, Chip, Divider, Link,
-  Breadcrumbs // For navigation context
+  Breadcrumbs, Paper // Use Paper for elevation/background
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext'; // For breadcrumbs
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
-// Re-use the chip color helper function from BugListPage
+// Re-use chip color helper
 const getChipColor = (value, type) => {
-   value = value?.toLowerCase();
-   type = type?.toLowerCase();
-   if (type === 'status') {
-       if (value === 'open') return 'warning';
-       if (value === 'in progress') return 'info';
-       if (value === 'resolved' || value === 'closed') return 'success';
-   } else if (type === 'priority') {
-       if (value === 'high') return 'error';
-       if (value === 'medium') return 'warning';
-       if (value === 'low') return 'info';
-   }
-   return 'default';
+    value = value?.toLowerCase(); type = type?.toLowerCase();
+    if (type === 'status') { /* ... same as list page ... */
+        if (value === 'open') return 'warning'; if (value === 'in progress') return 'info'; if (value === 'resolved' || value === 'closed') return 'success';
+    } else if (type === 'priority') { /* ... same as list page ... */
+        if (value === 'high') return 'error'; if (value === 'medium') return 'warning'; if (value === 'low') return 'info';
+    } return 'default';
 };
 
-// Helper to format dates
+// Re-use date format helper
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString();
+    try { const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }; return new Date(dateString).toLocaleString(undefined, options); }
+    catch (e) { return dateString; }
 };
 
 function BugDetailPage() {
-  const { bugId } = useParams(); // Get bugId from URL parameter
+  const { bugId } = useParams(); // Get bugId from URL
   const [bug, setBug] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchBugDetails = async () => {
-      if (!bugId) {
-        setError('No Bug ID provided.');
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError('');
+      if (!bugId) { setError('No Bug ID specified.'); setLoading(false); return; }
+      setLoading(true); setError(''); setBug(null); // Reset on new fetch
       try {
         const data = await getBugById(bugId);
         setBug(data);
       } catch (err) {
-         if (err.response?.status === 404) {
-             setError(`Bug with ID "${bugId}" not found.`);
-         } else {
-            setError('Failed to fetch bug details. Please try again later.');
-         }
         console.error(`Fetch bug ${bugId} error:`, err);
+        setError(err.response?.status === 404 ? `Bug with ID "${bugId}" not found.` : 'Failed to load bug details.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchBugDetails();
-  }, [bugId]); // Re-fetch if bugId changes
+  }, [bugId]); // Re-run effect if bugId changes
 
   return (
-    <Container maxWidth="md"> {/* Using medium width for detail view */}
-       {/* Breadcrumbs for navigation context */}
-       <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb" sx={{ mb: 3 }}>
-           <Link component={RouterLink} underline="hover" color="inherit" to="/">
-             Bug List
-           </Link>
-           <Typography color="text.primary">{loading ? 'Loading...' : bugId}</Typography>
-       </Breadcrumbs>
+    <Container maxWidth="lg"> {/* Consistent width with list */}
+      {/* Breadcrumbs Navigation */}
+      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb" sx={{ mb: 3 }}>
+          <Link component={RouterLink} underline="hover" color="inherit" to="/">
+            Bug List
+          </Link>
+          {/* Show loading or actual bugId */}
+          <Typography color="text.primary">{loading ? 'Loading...' : (bug ? bugId : 'Error')}</Typography>
+      </Breadcrumbs>
 
+      {/* Loading State */}
       {loading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
           <CircularProgress />
         </Box>
       )}
 
-      {error && (
+      {/* Error State */}
+      {!loading && error && (
         <Alert severity="error" sx={{ my: 2 }}>
           {error}
         </Alert>
       )}
 
+      {/* Content Display State */}
       {!loading && !error && bug && (
-        <Card>
-          <CardHeader
-            title={`Bug Details: ${bug.bug_id}`}
-            subheader={`Last updated: ${formatDate(bug.updated_at)}`}
-          />
-          <Divider />
-          <CardContent>
-            <Grid container spacing={2}>
-              {/* Subject */}
-              <Grid item xs={12}>
+        <Paper elevation={3} sx={{ p: 3 }}> {/* Wrap content in Paper */}
+          <Typography variant="h5" component="h1" gutterBottom>
+             Bug Details: {bug.bug_id}
+          </Typography>
+          <Divider sx={{ my: 2 }} />
+
+          <Grid container spacing={3}> {/* Increased spacing */}
+            {/* Left Column: Description, Timestamps */}
+            <Grid item xs={12} md={8}>
                 <Typography variant="h6" gutterBottom>Subject</Typography>
-                <Typography variant="body1">{bug.subject || 'N/A'}</Typography>
-              </Grid>
+                <Typography variant="body1" sx={{ mb: 3 }}>{bug.subject || 'N/A'}</Typography>
 
-              <Divider flexItem sx={{ my: 1, width: '100%' }} />
-
-              {/* Status and Priority */}
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Status</Typography>
-                <Chip
-                   label={bug.status || 'N/A'}
-                   color={getChipColor(bug.status, 'status')}
-                   size="medium"
-                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Priority</Typography>
-                 <Chip
-                    label={bug.priority || 'N/A'}
-                    color={getChipColor(bug.priority, 'priority')}
-                    size="medium"
-                  />
-              </Grid>
-
-               <Divider flexItem sx={{ my: 1, width: '100%' }} />
-
-              {/* Description */}
-              <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>Description</Typography>
-                {/* Use pre-wrap to preserve whitespace/newlines from description */}
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
+                <Box sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', bgcolor: 'action.hover', p: 2, borderRadius: 1, mb: 3, overflowX: 'auto' }}>
                     {bug.description || 'N/A'}
+                </Box>
+
+                <Typography variant="body2" color="text.secondary">
+                    Created: {formatDate(bug.created_at)}
                 </Typography>
-              </Grid>
+                 <Typography variant="body2" color="text.secondary">
+                    Last Updated: {formatDate(bug.updated_at)}
+                </Typography>
 
-              <Divider flexItem sx={{ my: 1, width: '100%' }} />
-
-              {/* Timestamps and Count */}
-              <Grid item xs={12} sm={4}>
-                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Created At</Typography>
-                 <Typography variant="body2">{formatDate(bug.created_at)}</Typography>
-              </Grid>
-               <Grid item xs={12} sm={4}>
-                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Last Updated</Typography>
-                 <Typography variant="body2">{formatDate(bug.updated_at)}</Typography>
-               </Grid>
-               <Grid item xs={12} sm={4}>
-                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>Modified Count</Typography>
-                 <Typography variant="body2">{bug.modified_count ?? 'N/A'}</Typography>
-               </Grid>
             </Grid>
-          </CardContent>
-        </Card>
+
+            {/* Right Column: Status, Priority, Count */}
+            <Grid item xs={12} md={4}>
+               <Box sx={{ mb: 3 }}>
+                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Status</Typography>
+                 <Chip label={bug.status || 'N/A'} color={getChipColor(bug.status, 'status')} />
+               </Box>
+               <Box sx={{ mb: 3 }}>
+                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Priority</Typography>
+                 <Chip label={bug.priority || 'N/A'} color={getChipColor(bug.priority, 'priority')} />
+               </Box>
+                <Box sx={{ mb: 3 }}>
+                 <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>Modified Count</Typography>
+                 <Typography variant="body1">{bug.modified_count ?? 'N/A'}</Typography>
+               </Box>
+                 {/* Add other fields like Reporter/Assignee here if implemented later */}
+            </Grid>
+          </Grid>
+        </Paper>
       )}
     </Container>
   );

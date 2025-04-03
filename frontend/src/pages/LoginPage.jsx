@@ -1,6 +1,6 @@
 // src/pages/LoginPage.jsx
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext'; // Import useAuth hook
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
@@ -11,39 +11,42 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import BugReportIcon from '@mui/icons-material/BugReport'; // App icon
 
 function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Local loading state for button
+  const [loading, setLoading] = useState(false); // Local loading state
 
-  const { login } = useAuth(); // Get login function from context
+  const { login, authLoading } = useAuth(); // Get login function and auth loading state
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Determine where to redirect after login
-  const from = location.state?.from?.pathname || "/"; // Redirect to previous page or home
+  // Redirect destination after successful login
+  const from = location.state?.from?.pathname || "/"; // Default to home ('/')
 
   const handleSubmit = async (event) => {
-    event.preventDefault(); // Prevent default form submission
-    setError(''); // Clear previous errors
-    setLoading(true);
+    event.preventDefault();
+    setError('');
+    setLoading(true); // Use local loading for button disable
     try {
-      const success = await login(username, password);
+      const success = await login(username, password); // Call context login
       if (success) {
-        navigate(from, { replace: true }); // Redirect on success
+        navigate(from, { replace: true }); // Navigate on success
       }
-      // If login throws error, it's caught below
+      // Context handles setting global state, we just navigate
     } catch (err) {
       console.error("Login page submit error:", err);
-      // Try to get specific error message from backend response
-      const detail = err.response?.data?.detail;
-      setError(detail || 'Login failed. Please check your credentials.');
+      const detail = err.response?.data?.detail; // Try to get specific backend error
+      setError(detail || 'Login failed. Please check credentials or server connection.');
     } finally {
-      setLoading(false);
+      setLoading(false); // Stop local loading indicator
     }
   };
+
+  // Combine local loading and global auth loading for disabling form
+  const isSubmitting = loading || authLoading;
 
   return (
     <Container component="main" maxWidth="xs">
@@ -55,14 +58,15 @@ function LoginPage() {
           alignItems: 'center',
         }}
       >
-        <Card sx={{ width: '100%', mt: 1 }}>
+        <BugReportIcon sx={{ m: 1, fontSize: 40 }} color="primary" />
+        <Typography component="h1" variant="h5" gutterBottom>
+          Bug Tracker Sign In
+        </Typography>
+        <Card sx={{ width: '100%', mt: 3 }}>
           <CardContent>
-            <Typography component="h1" variant="h5" align="center" gutterBottom>
-              Sign In
-            </Typography>
             <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
               {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
+                <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
                   {error}
                 </Alert>
               )}
@@ -77,7 +81,7 @@ function LoginPage() {
                 autoFocus
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                disabled={loading}
+                disabled={isSubmitting} // Use combined loading state
               />
               <TextField
                 margin="normal"
@@ -90,19 +94,30 @@ function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
+                disabled={isSubmitting}
               />
-              {/* Add Remember Me later if needed */}
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
-                sx={{ mt: 3, mb: 2 }}
-                disabled={loading}
+                sx={{ mt: 3, mb: 2, position: 'relative' }} // Relative position for spinner
+                disabled={isSubmitting}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+                Sign In
+                {isSubmitting && ( // Show spinner on button if submitting
+                  <CircularProgress
+                    size={24}
+                    color="inherit"
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      marginTop: '-12px',
+                      marginLeft: '-12px',
+                    }}
+                  />
+                )}
               </Button>
-              {/* Add Links for Forgot Password or Sign Up later if needed */}
             </Box>
           </CardContent>
         </Card>
