@@ -1,12 +1,11 @@
 # api/urls.py
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import BugViewSet, TriggerEmailCheckView 
+from django.urls import path
+from . import views # Use relative import within the same app
 
-router = DefaultRouter()
-router.register(r'bugs', BugViewSet, basename='bug')
+app_name = 'api' # Namespace for URLs (optional but good practice)
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('trigger-email-check/', TriggerEmailCheckView.as_view(), name='trigger-email-check'),
+    path('bugs/', views.BugListView.as_view(), name='bug-list'),
+    path('bugs/<str:bug_id>/', views.BugDetailView.as_view(), name='bug-detail'),
+    path('bug_modifications/', views.BugModificationsAPIView.as_view(), name='bug-modifications'),
 ]

@@ -1,60 +1,83 @@
-from rest_framework import viewsets, permissions, views, status
-from rest_framework.response import Response
-from django.core.management import call_command
-from io import StringIO 
-import threading 
-import sys
-from .models import Bug
+# api/views.py
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from rest_framework import generics, permissions, views, response, status
+from rest_framework.pagination import PageNumberPagination # Import pagination
+
+from .models import Bug, BugModificationLog
 from .serializers import BugSerializer
 
-class BugViewSet(viewsets.ModelViewSet):
+# --- Custom Pagination (Optional - Define if you want non-default page size) ---
+# class StandardResultsSetPagination(PageNumberPagination):
+#     page_size = 20 # Or get from settings
+#     page_size_query_param = 'page_size'
+#     max_page_size = 100
+# ----------------------------------------------------------------------------
 
-    queryset = Bug.objects.prefetch_related('email_logs').order_by('-last_email_received_at', '-created_at')
+
+class BugListView(generics.ListAPIView):
+    """
+    API endpoint that allows bugs to be viewed.
+    Provides a list of all bugs with pagination.
+    Requires authentication.
+    """
+    queryset = Bug.objects.all().order_by('-created_at') # Get all bugs, ordered
     serializer_class = BugSerializer
-    permission_classes = [permissions.AllowAny] # TODO: Secure
-    lookup_field = 'unique_id'
-    http_method_names = ['get', 'patch', 'head', 'options']
+    permission_classes = [permissions.IsAuthenticated] # Only authenticated users can access
+    # pagination_class = StandardResultsSetPagination # Uncomment to use custom pagination class
+    # If not set, uses DEFAULT_PAGINATION_CLASS from settings
 
-class TriggerEmailCheckView(views.APIView):
+class BugDetailView(generics.RetrieveAPIView):
+    """
+    API endpoint that allows a single bug to be viewed.
+    Retrieves bug details by its unique `bug_id`.
+    Requires authentication.
+    """
+    queryset = Bug.objects.all()
+    serializer_class = BugSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'bug_id' # Tell DRF to use 'bug_id' field from URL for lookup
 
-    permission_classes = [permissions.AllowAny] # TODO: Secure this endpoint!
+class BugModificationsAPIView(views.APIView):
+    """
+    API endpoint to retrieve aggregated bug modification counts per date.
+    Returns data suitable for charting. Format: [{"date": "YYYY-MM-DD", "count": N}, ...]
+    Requires authentication.
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
-        self.log_message("Received trigger request.")
-
+    def get(self, request, *args, **kwargs):
+        """
+        Handles GET requests to retrieve modification counts.
+        """
         try:
-            # output = StringIO()
-            # call_command('check_emails', stdout=output, stderr=output)
-            # result = output.getvalue()
-            # self.log_message(f"Command finished:\n{result}")
-            # return Response({"message": "Email check command executed.", "output": result}, status=status.HTTP_200_OK)
-            thread = threading.Thread(target=self.run_check_emails_command)
-            thread.start()
-            self.log_message("Started check_emails command in background thread.")
-            return Response({"message": "Email check initiated in background."}, status=status.HTTP_202_ACCEPTED)
+            # Query the BugModificationLog table
+            data = BugModificationLog.objects \
+                .annotate(date=TruncDate('modified_at')) \
+                .values('date') \
+                .annotate(count=Count('id')) \
+                .values('date', 'count') \
+                .order_by('date') # Order chronologically
+
+            # Format the date field as string 'YYYY-MM-DD'
+            # (Note: .values() might already return strings depending on DB backend,
+            # but explicit formatting ensures consistency)
+            formatted_data = [
+                {
+                    'date': item['date'].strftime('%Y-%m-%d') if item['date'] else None, # Handle potential None dates
+                    'count': item['count']
+                }
+                for item in data if item['date'] # Filter out potential null dates if necessary
+            ]
+
+            return response.Response(formatted_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            self.log_message(f"Error triggering command: {e}", error=True)
-            return Response({"error": f"Failed to trigger email check: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def run_check_emails_command(self):
-        """Runs the command and logs output."""
-        self.log_message("Background thread: Executing check_emails...")
-        output = StringIO()
-        try:
-            call_command('check_emails', stdout=output, stderr=output)
-            result = output.getvalue()
-            self.log_message(f"Background thread: Command finished successfully.\nOutput:\n{result}")
-        except Exception as e:
-            result = output.getvalue()
-            self.log_message(f"Background thread: Command failed!\nOutput:\n{result}\nError:\n{e}", error=True)
-            import traceback
-            self.log_message(traceback.format_exc(), error=True)
-
-
-    def log_message(self, message, error=False):
-         prefix = "[TriggerEmailCheck]"
-         if error:
-             print(f"{prefix} ERROR: {message}", file=sys.stderr)
-         else:
-             print(f"{prefix} INFO: {message}")
+            # Log the error (using Django's logging)
+            import logging
+            logger = logging.getLogger(__name__) # Or use logger = logging.getLogger('api') based on settings
+            logger.error(f"Error fetching bug modifications: {e}", exc_info=True)
+            return response.Response(
+                {"error": "An internal server error occurred."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

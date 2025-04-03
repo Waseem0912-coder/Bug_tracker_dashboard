@@ -1,44 +1,27 @@
+# api/serializers.py
 from rest_framework import serializers
-from .models import Bug, EmailLog 
-
-class EmailLogSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EmailLog
-        fields = [
-            'id',
-            'received_at',
-            'email_subject',
-            'parsed_priority', 
-            'parsed_status',
-            'parsed_description',
-            'parsed_assignee',
-        ]
-        read_only_fields = fields 
-
+from .models import Bug # Use .models since it's in the same app
 
 class BugSerializer(serializers.ModelSerializer):
-    email_log_count = serializers.IntegerField(source='email_logs.count', read_only=True)
-    email_logs = EmailLogSerializer(many=True, read_only=True, source='email_logs_ordered')
-
+    """
+    Serializer for the Bug model.
+    """
+    # Make choices human-readable in the API output
+    status = serializers.CharField(source='get_status_display')
+    priority = serializers.CharField(source='get_priority_display')
 
     class Meta:
         model = Bug
         fields = [
-            'id',
-            'unique_id',
-            'latest_subject',
-            'priority',
-            'status',
+            'id', # Standard DRF primary key
+            'bug_id',
+            'subject',
             'description',
-            'assignee',
+            'status',
+            'priority',
             'created_at',
-            'last_email_received_at',
-            'last_manual_update_at',
-            'email_log_count',
-            'email_logs', 
+            'updated_at',
+            'modified_count',
         ]
-        read_only_fields = [ 
-            'id', 'unique_id', 'created_at', 'last_email_received_at',
-            'last_manual_update_at', 'email_log_count', 'email_logs'
-        ]
-     
+        # Optionally make some fields read-only if you were allowing API writes
+        read_only_fields = ['created_at', 'updated_at', 'modified_count']
