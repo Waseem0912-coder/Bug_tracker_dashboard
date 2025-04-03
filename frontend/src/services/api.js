@@ -43,13 +43,13 @@ apiClient.interceptors.response.use(
     // Simply return the successful response.
     return response;
   },
-  (error) => {
+  async (error) => { // Make the interceptor async to await refresh
     // Any status codes outside the range of 2xx triggers this function.
     console.error('API Response Error:', error.response || error.message || error);
 
     const originalRequest = error.config;
 
-    // --- TODO: Implement JWT Token Refresh Logic ---
+    // --- JWT Token Refresh Logic ---
     // Check if it's a 401 Unauthorized error and if we haven't already tried refreshing for this request.
     if (error.response?.status === 401 && !originalRequest._retry) {
         console.log("Attempting token refresh due to 401...");
@@ -58,44 +58,48 @@ apiClient.interceptors.response.use(
         const refreshToken = localStorage.getItem('refresh_token');
 
         if (refreshToken) {
-            // Use a separate axios instance or direct axios call for refresh
-            // to avoid recursive interceptor loops if refresh itself fails with 401.
-            return axios.post(`${API_BASE_URL}/token/refresh/`, { refresh: refreshToken })
-                .then(res => {
-                    if (res.status === 200) {
-                        // Refresh successful: Update tokens in storage
-                        localStorage.setItem('access_token', res.data.access);
-                        // Note: If backend rotates refresh tokens, update it too (check response.data.refresh)
-                        // localStorage.setItem('refresh_token', res.data.refresh);
+            try {
+                // Use a separate axios instance or direct axios call for refresh
+                // to avoid recursive interceptor loops if refresh itself fails with 401.
+                const response = await axios.post(`${API_BASE_URL}/token/refresh/`, { refresh: refreshToken });
 
-                        console.log("Token refresh successful. Retrying original request.");
+                if (response.status === 200) {
+                    // Refresh successful: Update tokens in storage
+                    localStorage.setItem('access_token', response.data.access);
+                    // Note: If backend rotates refresh tokens and sends a new one, update it too:
+                    // if (response.data.refresh) { localStorage.setItem('refresh_token', response.data.refresh); }
 
-                        // Update the authorization header for the original request and the default apiClient instance
-                        apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + res.data.access;
-                        originalRequest.headers['Authorization'] = 'Bearer ' + res.data.access;
+                    console.log("Token refresh successful. Retrying original request.");
 
-                        // Retry the original request with the new token
-                        return apiClient(originalRequest);
-                    }
-                })
-                .catch(refreshError => {
-                    console.error("Token refresh failed:", refreshError);
-                    // Refresh failed: Clear tokens, trigger logout (e.g., redirect, update context)
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('refresh_token');
-                    // Example: Redirect to login or dispatch a logout event
-                    // window.location.href = '/login';
-                    return Promise.reject(refreshError); // Reject the original request's promise
-                });
+                    // Update the authorization header for the default apiClient instance and the original request
+                    apiClient.defaults.headers.common['Authorization'] = 'Bearer ' + response.data.access;
+                    originalRequest.headers['Authorization'] = 'Bearer ' + response.data.access;
+
+                    // Retry the original request with the new token
+                    return apiClient(originalRequest);
+                }
+            } catch (refreshError) {
+                 console.error("Token refresh request failed:", refreshError.response?.data || refreshError.message);
+                 // Refresh failed: Clear tokens, trigger logout (e.g., redirect, update context)
+                 localStorage.removeItem('access_token');
+                 localStorage.removeItem('refresh_token');
+                 // Example: Redirect to login or dispatch a logout event
+                 // Consider dispatching a custom event that the AuthContext can listen for.
+                 window.location.href = '/login'; // Simple redirect
+                 return Promise.reject(refreshError); // Reject the original request's promise
+            }
         } else {
             console.log("No refresh token found, cannot refresh.");
              // If no refresh token, likely need to log in again.
              // Redirect or dispatch logout event here as well.
+             localStorage.removeItem('access_token');
+             localStorage.removeItem('refresh_token');
+             window.location.href = '/login'; // Simple redirect
         }
     }
     // ----------------------------------------
 
-    // For errors other than 401 or if refresh fails, just reject the promise.
+    // For errors other than 401 or if refresh attempt fails, just reject the promise.
     return Promise.reject(error);
   }
 );
@@ -114,8 +118,8 @@ export const loginUser = async (username, password) => {
     const response = await apiClient.post('/token/', { username, password });
     return response.data;
   } catch (error) {
-    console.error("Login API error:", error.response?.data || error.message);
-    throw error; // Let calling component handle UI feedback
+    // Error is already logged by interceptor, just re-throw
+    throw error;
   }
 };
 
@@ -133,7 +137,7 @@ export const getBugs = async (page = 1, pageSize = 10) => {
     });
     return response.data;
   } catch (error) {
-    console.error("Error fetching bugs:", error.response?.data || error.message);
+    // Error is already logged by interceptor, just re-throw
     throw error;
   }
 };
@@ -153,7 +157,7 @@ export const getBugById = async (bugId) => {
     const response = await apiClient.get(`/bugs/${bugId}/`);
     return response.data;
   } catch (error) {
-    console.error(`Error fetching bug ${bugId}:`, error.response?.data || error.message);
+    // Error is already logged by interceptor, just re-throw
     throw error;
   }
 };
@@ -165,10 +169,10 @@ export const getBugById = async (bugId) => {
 export const getBugModifications = async () => {
   try {
     const response = await apiClient.get('/bug_modifications/');
-    // Ensure data is an array, default to empty array if not
+    // Ensure data is an array, default to empty array if not or null
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
-    console.error("Error fetching bug modifications:", error.response?.data || error.message);
+    // Error is already logged by interceptor, just re-throw
     throw error;
   }
 };
