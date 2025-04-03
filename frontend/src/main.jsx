@@ -6,7 +6,8 @@ import App from './App.jsx';
 // --- MUI Theme and Styling ---
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline'; // Applies baseline styles and background
-import theme from './theme/theme'; // Your custom dark theme
+// Import the potentially renamed theme file/export
+import githubDarkTheme from './theme/theme'; // Ensure this matches the export name
 
 // --- Authentication Context ---
 import { AuthProvider } from './contexts/AuthContext.jsx'; // Provides auth state and functions
@@ -24,7 +25,7 @@ if (rootElement) {
     // StrictMode helps identify potential problems in an application
     <React.StrictMode>
       {/* Apply the MUI theme to the entire application */}
-      <ThemeProvider theme={theme}>
+      <ThemeProvider theme={githubDarkTheme}> {/* Use the new theme name */}
         {/* Apply baseline CSS resets and theme background color */}
         <CssBaseline />
         {/* Provide authentication state and functions to the app */}

@@ -135,19 +135,19 @@ STATIC_URL = 'static/'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST Framework Settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        # Default to requiring authentication for API access
         'rest_framework.permissions.IsAuthenticated',
-        # You can relax this globally or override per-view if needed
-        # 'rest_framework.permissions.IsAuthenticatedOrReadOnly', # Allows read access without login
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10 # Default page size for lists
+    'PAGE_SIZE': 10,  # Default page size
+    # --- ADD THIS ---
+    'PAGE_SIZE_QUERY_PARAM': 'page_size', # Allows frontend to override page size
+    'MAX_PAGE_SIZE': 100 # Optional: Set a maximum limit
+    # --------------
 }
 
 # Simple JWT Settings

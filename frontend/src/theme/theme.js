@@ -1,117 +1,144 @@
 // src/theme/theme.js
 import { createTheme } from '@mui/material/styles';
-import { blueGrey, grey, indigo, pink, red, green, orange, blue } from '@mui/material/colors';
+import { grey, blue, red, green, yellow } from '@mui/material/colors'; // Use yellow instead of orange
 
-// Define the dark theme based on the provided image's aesthetic
-const darkTheme = createTheme({
+// Define the dark theme inspired by GitHub's dark mode
+const githubDarkTheme = createTheme({
   palette: {
-    mode: 'dark', // Enable dark mode
+    mode: 'dark',
     primary: {
-      // Main interactive color (e.g., buttons, links, accents)
-      // Using a shade of indigo/blue like in the example's highlights
-      main: indigo[300],
+      main: blue[300], // Lighter blue for primary actions
     },
     secondary: {
-      // Secondary interactive color (can adjust)
-      main: pink['A200'], // A contrasting accent
+      main: green[400], // Green accent
     },
     background: {
-      // Main background color (dark navy/purple)
-      default: '#1e1a3e', // Dark purple/navy base
-      paper: '#2a2652',   // Slightly lighter for surfaces like Cards, Tables, AppBar
+      default: '#0d1117', // Very dark charcoal/almost black
+      paper: '#161b22',   // Lighter grey/charcoal for surfaces
     },
     text: {
-      // Default text colors
-      primary: grey[200],   // Light grey for primary text
-      secondary: grey[400], // Dimmer grey for secondary text
+      primary: '#c9d1d9',   // Light grey/off-white for primary text
+      secondary: '#8b949e', // Dimmer grey for secondary text/icons
     },
-    // Define specific colors for statuses/priorities if needed directly
-    // Or map status/priority values to these in components
-    error: {
-      main: red[500], // Example for 'Critical' or errors
-    },
-    warning: {
-      main: orange[400], // Example for 'High' priority maybe?
-    },
-    info: {
-      main: blue[400], // Example for 'Medium' priority?
-    },
-    success: {
-      main: green[500], // Example for 'Resolved'/'Fixed' status
-    },
-    divider: blueGrey[700], // Color for dividers
+    error: { main: red[400] },
+    warning: { main: yellow[600] }, // Yellow for warning (like open status)
+    info: { main: blue[300] }, // Blue for info (like in progress)
+    success: { main: green[400] }, // Green for success (like resolved)
+    divider: '#30363d', // Dark grey divider
   },
   typography: {
-    // Optional: Adjust font sizes, families etc.
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h1: { fontSize: '2.5rem', fontWeight: 500 },
-    h2: { fontSize: '2rem', fontWeight: 500 },
-    h3: { fontSize: '1.75rem', fontWeight: 500 },
-    h4: { fontSize: '1.5rem', fontWeight: 500 },
-    h5: { fontSize: '1.25rem', fontWeight: 500 },
-    h6: { fontSize: '1.1rem', fontWeight: 500, color: grey[300] }, // Example: Title color like "Incoming bugs"
-    // You can customize body, button, caption typography too
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+    h1: { fontSize: '2.2rem', fontWeight: 600 },
+    h2: { fontSize: '1.8rem', fontWeight: 600 },
+    h3: { fontSize: '1.5rem', fontWeight: 600 },
+    h4: { fontSize: '1.25rem', fontWeight: 600 },
+    h5: { fontSize: '1.1rem', fontWeight: 600 },
+    h6: { fontSize: '1rem', fontWeight: 600, color: '#8b949e' }, // Match secondary text
+    button: {
+        textTransform: 'none',
+        fontWeight: 600,
+    }
   },
   components: {
-    // Optional: Override default styles for specific components
     MuiAppBar: {
       styleOverrides: {
         root: {
-          // Use paper background for AppBar to match example
-          backgroundColor: '#2a2652',
-          // Add a subtle bottom border if desired
-          // borderBottom: `1px solid ${blueGrey[700]}`,
+          backgroundColor: '#161b22', // Paper background
+          boxShadow: 'none', // Flat look
+          borderBottom: '1px solid #30363d', // Subtle border
         },
       },
     },
     MuiPaper: {
+      defaultProps: {
+         elevation: 0, // Default to flat paper
+      },
       styleOverrides: {
          root: {
-             // Ensure paper surfaces use the slightly lighter background
-             backgroundColor: '#2a2652',
-         }
+             backgroundColor: '#161b22', // Ensure correct background
+             backgroundImage: 'none',
+         },
+         // Example: Add border only if variant="outlined"
+         // outlined: {
+         //    border: '1px solid #30363d'
+         // }
       }
     },
-     MuiTableContainer: {
+    MuiTableContainer: {
         styleOverrides: {
             root: {
-                // Make table container background match paper
-                backgroundColor: '#2a2652',
+                backgroundColor: 'transparent', // Use parent Paper background
             }
         }
     },
     MuiTableCell: {
       styleOverrides: {
         head: {
-          // Style table headers
-          color: grey[400],
-          fontWeight: 'bold',
+          color: '#8b949e',
+          fontWeight: 600,
+          borderBottom: '1px solid #30363d',
+          whiteSpace: 'nowrap', // Prevent header text wrapping
         },
         body: {
-          // Style table body cells
-          color: grey[200],
-          // Add subtle borders if desired
-          // borderColor: blueGrey[800],
-        }
+          color: '#c9d1d9',
+          borderBottom: '1px solid #30363d',
+        },
       }
+    },
+     MuiChip: {
+        styleOverrides: {
+            // Adjust chip styles for better contrast/look on new theme
+            root: ({ ownerState, theme }) => ({
+               fontWeight: 'bold',
+               // Use slightly adjusted colors or styles if needed based on theme.palette...
+               // Example: Making warning chip text darker for yellow background
+               ...(ownerState.color === 'warning' && { color: grey[900] }),
+            }),
+        }
+    },
+    MuiLink: {
+        styleOverrides: {
+            root: {
+                color: blue[300], // Primary blue
+                textDecoration: 'none',
+                '&:hover': { textDecoration: 'underline' }
+            }
+        }
     },
     MuiButton: {
         styleOverrides: {
-            root: {
-                textTransform: 'none', // Buttons often look better without ALL CAPS
-            }
+            // Example: Contrast button
+            // containedPrimary: {
+            //     color: '#ffffff', // Ensure text is white on blue button
+            // }
         }
     },
-    MuiChip: { // For Status/Priority badges
+    MuiToggleButtonGroup: {
         styleOverrides: {
-            root: {
-                borderRadius: '6px', // Slightly less rounded
-                fontWeight: 'bold',
-            }
+            root: { backgroundColor: '#21262d' } // Slightly different group background
         }
-    }
-    // Add more component overrides as needed
+    },
+     MuiToggleButton: {
+         styleOverrides: {
+             root: {
+                 color: '#8b949e', // Secondary text
+                 border: `1px solid #30363d`, // Divider color border
+                 '&.Mui-selected': {
+                     color: '#c9d1d9', // Primary text when selected
+                     backgroundColor: 'rgba(56, 139, 253, 0.15)', // Primary blue with alpha
+                     borderColor: blue[300], // Primary blue border
+                     '&:hover': {
+                        backgroundColor: 'rgba(56, 139, 253, 0.25)', // Slightly darker on hover
+                     }
+                 },
+                 '&:not(.Mui-selected):hover': {
+                     backgroundColor: '#21262d', // Hover background
+                     borderColor: '#8b949e', // Brighter border on hover
+                 }
+             }
+         }
+     }
   },
 });
 
-export default darkTheme;
+export default githubDarkTheme; // Export the theme

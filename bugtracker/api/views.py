@@ -41,43 +41,62 @@ class BugDetailView(generics.RetrieveAPIView):
 class BugModificationsAPIView(views.APIView):
     """
     API endpoint to retrieve aggregated bug modification counts per date.
+    Accepts an optional 'priority' query parameter ('low', 'medium', 'high').
     Returns data suitable for charting. Format: [{"date": "YYYY-MM-DD", "count": N}, ...]
     Requires authentication.
     """
     permission_classes = [permissions.IsAuthenticated]
+    valid_priorities = [p[0] for p in Bug.Priority.choices] # Get valid keys ('low', 'medium', 'high')
 
     def get(self, request, *args, **kwargs):
         """
-        Handles GET requests to retrieve modification counts.
+        Handles GET requests to retrieve modification counts, filtered by priority if provided.
         """
+        # Get priority filter from query parameters
+        priority_filter = request.query_params.get('priority', None)
+
+        # Validate the priority filter if provided
+        if priority_filter and priority_filter.lower() not in self.valid_priorities:
+            return response.Response(
+                {"error": f"Invalid priority value. Choose from: {', '.join(self.valid_priorities)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
-            # Query the BugModificationLog table
-            data = BugModificationLog.objects \
+            # Start with the base queryset
+            queryset = BugModificationLog.objects.all()
+
+            # Apply priority filter if specified
+            if priority_filter:
+                 # Filter based on the related bug's priority field
+                 # Uses '__' to traverse the ForeignKey relationship
+                queryset = queryset.filter(bug__priority=priority_filter.lower())
+                print(f"Filtering modifications for priority: {priority_filter.lower()}") # Debug print
+
+            # Perform aggregation on the (potentially filtered) queryset
+            data = queryset \
                 .annotate(date=TruncDate('modified_at')) \
                 .values('date') \
                 .annotate(count=Count('id')) \
                 .values('date', 'count') \
-                .order_by('date') # Order chronologically
+                .order_by('date')
 
-            # Format the date field as string 'YYYY-MM-DD'
-            # (Note: .values() might already return strings depending on DB backend,
-            # but explicit formatting ensures consistency)
+            # Format the date field
             formatted_data = [
                 {
-                    'date': item['date'].strftime('%Y-%m-%d') if item['date'] else None, # Handle potential None dates
+                    'date': item['date'].strftime('%Y-%m-%d') if item['date'] else None,
                     'count': item['count']
                 }
-                for item in data if item['date'] # Filter out potential null dates if necessary
+                for item in data if item['date']
             ]
 
             return response.Response(formatted_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Log the error (using Django's logging)
             import logging
-            logger = logging.getLogger(__name__) # Or use logger = logging.getLogger('api') based on settings
-            logger.error(f"Error fetching bug modifications: {e}", exc_info=True)
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error fetching bug modifications (priority: {priority_filter}): {e}", exc_info=True)
             return response.Response(
-                {"error": "An internal server error occurred."},
+                {"error": "An internal server error occurred while fetching modifications."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
