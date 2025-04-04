@@ -1,7 +1,6 @@
-// src/pages/SignupPage.jsx
 import React, { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { registerUser } from '../services/api'; // Import register function
+import { registerUser } from '../services/api'; 
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
@@ -11,8 +10,8 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Link from '@mui/material/Link'; // MUI Link
-import Grid from '@mui/material/Grid'; // For link layout
+import Link from '@mui/material/Link'; 
+import Grid from '@mui/material/Grid'; 
 import BugReportIcon from '@mui/icons-material/BugReport';
 
 function SignupPage() {
@@ -20,12 +19,12 @@ function SignupPage() {
     username: '',
     email: '',
     password: '',
-    password2: '', // Password confirmation
+    password2: '', 
   });
-  const [error, setError] = useState(''); // General error message
-  const [fieldErrors, setFieldErrors] = useState({}); // Errors for specific fields
+  const [error, setError] = useState(''); 
+  const [fieldErrors, setFieldErrors] = useState({}); 
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false); // To show success message
+  const [success, setSuccess] = useState(false); 
   const navigate = useNavigate();
 
   const handleChange = (event) => {
@@ -34,11 +33,11 @@ function SignupPage() {
       ...prevState,
       [name]: value,
     }));
-    // Clear field error when user starts typing in it
+
     if (fieldErrors[name]) {
         setFieldErrors(prevErrors => ({ ...prevErrors, [name]: undefined }));
     }
-     // Clear general error when user interacts
+
     if (error) setError('');
   };
 
@@ -48,7 +47,6 @@ function SignupPage() {
     setFieldErrors({});
     setSuccess(false);
 
-    // Basic frontend validation (match backend)
     if (formData.password !== formData.password2) {
       setFieldErrors({ password2: "Passwords do not match." });
       return;
@@ -62,26 +60,26 @@ function SignupPage() {
     try {
       const response = await registerUser(formData);
       console.log("Registration successful:", response);
-      setSuccess(true); // Show success message
-      // Optionally redirect after a delay or keep user here
-      setTimeout(() => navigate('/login'), 3000); // Redirect to login after 3s
+      setSuccess(true); 
+
+      setTimeout(() => navigate('/login'), 3000); 
 
     } catch (err) {
       console.error("Signup page submit error:", err);
       const responseData = err.response?.data;
 
       if (responseData && typeof responseData === 'object') {
-         // Map backend field errors (e.g., username exists) to frontend state
+
          const backendErrors = {};
          for (const key in responseData) {
              if (Array.isArray(responseData[key])) {
-                backendErrors[key] = responseData[key].join(' '); // Join multiple errors for a field
+                backendErrors[key] = responseData[key].join(' '); 
              }
          }
          if (Object.keys(backendErrors).length > 0) {
             setFieldErrors(backendErrors);
          } else {
-             // Handle non-field errors (less common for registration validation)
+
               setError(responseData.detail || "Registration failed. Please check your input or try again later.");
          }
 
@@ -106,7 +104,7 @@ function SignupPage() {
                  </Alert>
              ) : (
               <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-                {/* Display general error if exists */}
+                {}
                 {error && !success && ( <Alert severity="error" sx={{ mb: 2, width: '100%' }}>{error}</Alert> )}
 
                 <TextField
@@ -125,7 +123,7 @@ function SignupPage() {
                   margin="normal" required fullWidth
                   name="password" label="Password" type="password" id="password" autoComplete="new-password"
                   value={formData.password} onChange={handleChange} disabled={loading}
-                  error={!!fieldErrors.password} helperText={fieldErrors.password || "Use 8+ chars, letters, numbers, symbols."} // Add helper text
+                  error={!!fieldErrors.password} helperText={fieldErrors.password || "Use 8+ chars, letters, numbers, symbols."} 
                 />
                  <TextField
                   margin="normal" required fullWidth

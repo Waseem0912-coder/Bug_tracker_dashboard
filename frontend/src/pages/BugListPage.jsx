@@ -1,25 +1,23 @@
-// src/pages/BugListPage.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
+import React, { useState, useEffect, useCallback, useRef } from 'react'; 
 import { Link as RouterLink } from 'react-router-dom';
 import { getBugs } from '../services/api';
 import {
   Container, Typography, Box, CircularProgress, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Paper, Link, Chip, TablePagination, Tooltip,
-  TextField, InputAdornment // Added TextField and InputAdornment
+  TextField, InputAdornment 
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search'; // Import Search Icon
+import SearchIcon from '@mui/icons-material/Search'; 
 import { grey } from '@mui/material/colors';
 
-// Helper function for chip colors
-const getChipColor = (value, type) => { /* ... as before ... */
+const getChipColor = (value, type) => { 
     value = value?.toLowerCase(); type = type?.toLowerCase();
     if (type === 'status') { if (value === 'open') return 'warning'; if (value === 'in progress') return 'info'; if (value === 'resolved' || value === 'closed') return 'success'; }
     else if (type === 'priority') { if (value === 'high') return 'error'; if (value === 'medium') return 'warning'; if (value === 'low') return 'default'; }
     return 'default';
 };
-// Helper for date formatting
-const formatDate = (dateString) => { /* ... as before ... */
+
+const formatDate = (dateString) => { 
     if (!dateString) return 'N/A'; try { const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }; return new Date(dateString).toLocaleString(undefined, options); }
     catch (e) { return dateString; }
 };
@@ -31,36 +29,31 @@ function BugListPage() {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalBugs, setTotalBugs] = useState(0);
-    // --- State for Search ---
-    const [searchTerm, setSearchTerm] = useState(''); // Current input value
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(''); // Value used for API call
-    const debounceTimeoutRef = useRef(null); // Ref to store timeout ID
-    // ------------------------
 
-    // Debounce function for search input
+    const [searchTerm, setSearchTerm] = useState(''); 
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(''); 
+    const debounceTimeoutRef = useRef(null); 
+
     const handleSearchChange = (event) => {
         const newSearchTerm = event.target.value;
-        setSearchTerm(newSearchTerm); // Update input field immediately
+        setSearchTerm(newSearchTerm); 
 
-        // Clear existing debounce timeout
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
         }
 
-        // Set new timeout to update debounced term after 500ms
         debounceTimeoutRef.current = setTimeout(() => {
             console.log("Debounced search:", newSearchTerm);
-            setDebouncedSearchTerm(newSearchTerm); // Trigger API call via useEffect
-             setPage(0); // Reset to first page when search term changes
-        }, 500); // Adjust debounce delay (milliseconds) as needed
+            setDebouncedSearchTerm(newSearchTerm); 
+             setPage(0); 
+        }, 500); 
     };
 
-    // Fetch function now includes search term
     const fetchBugs = useCallback(async (currentPage, currentRowsPerPage, currentSearchTerm) => {
         setLoading(true);
         setError('');
         try {
-            // Pass all params to the API call
+
             const data = await getBugs(currentPage + 1, currentRowsPerPage, currentSearchTerm);
             setBugs(data.results);
             setTotalBugs(data.count);
@@ -73,15 +66,13 @@ function BugListPage() {
         }
     }, []);
 
-    // Effect now depends on debouncedSearchTerm as well
     useEffect(() => {
         console.log(`Fetching page ${page}, rows ${rowsPerPage}, search: '${debouncedSearchTerm}'`);
-        // Pass the debounced search term to fetchBugs
+
         fetchBugs(page, rowsPerPage, debouncedSearchTerm);
-    // Include debouncedSearchTerm in dependency array
+
     }, [page, rowsPerPage, debouncedSearchTerm, fetchBugs]);
 
-    // Handlers for pagination
     const handleChangePage = (event, newPage) => { setPage(newPage); };
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
@@ -91,10 +82,10 @@ function BugListPage() {
     return (
         <Container maxWidth="lg">
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
-                <Typography variant="h4" gutterBottom component="h1" sx={{ mb: { xs: 2, md: 0 } }}> {/* Adjust margin */}
+                <Typography variant="h4" gutterBottom component="h1" sx={{ mb: { xs: 2, md: 0 } }}> {}
                     Bug Report List
                 </Typography>
-                {/* --- Search Input Field --- */}
+                {}
                 <TextField
                     variant="outlined"
                     size="small"
@@ -108,9 +99,9 @@ function BugListPage() {
                         </InputAdornment>
                         ),
                     }}
-                    sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 300 } }} // Responsive width
+                    sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 300 } }} 
                 />
-                {/* ------------------------ */}
+                {}
             </Box>
 
             {loading && (<Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress /></Box>)}
@@ -136,7 +127,7 @@ function BugListPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    bugs.map((bug) => ( /* ... TableRow and Cells as before ... */
+                                    bugs.map((bug) => ( 
                                         <TableRow hover key={bug.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                                             <TableCell component="th" scope="row"><Tooltip title="View Details"><Link component={RouterLink} to={`/bugs/${bug.bug_id}`} sx={{ fontWeight: 500 }}>{bug.bug_id}</Link></Tooltip></TableCell>
                                             <TableCell sx={{ maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><Tooltip title={bug.subject}><span>{bug.subject}</span></Tooltip></TableCell>

@@ -1,38 +1,31 @@
-// src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
-// --- Layouts ---
 import MainLayout from './layouts/MainLayout';
 
-// --- Route Protection ---
 import ProtectedRoute from './components/ProtectedRoute';
 
-// --- Page Components ---
 import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage'; // <<< IMPORT SIGNUP PAGE
+import SignupPage from './pages/SignupPage'; 
 import BugListPage from './pages/BugListPage';
 import BugDetailPage from './pages/BugDetailPage';
 import DashboardPage from './pages/DashboardPage';
 
-// --- Not Found Component ---
-const NotFound = () => ( /* ... as before ... */
+const NotFound = () => ( 
     <div style={{ textAlign: 'center', marginTop: '50px' }}>
         <h2>404 - Page Not Found</h2> <p>Sorry, the page you are looking for does not exist.</p>
     </div>
 );
 
-
 function App() {
   return (
     <Router>
       <Routes>
-        {/* --- Public Routes --- */}
+        {}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} /> {/* <<< ADD SIGNUP ROUTE */}
+        <Route path="/signup" element={<SignupPage />} /> {}
 
-
-        {/* --- Protected Routes --- */}
+        {}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route index element={<BugListPage />} />
@@ -41,8 +34,7 @@ function App() {
           </Route>
         </Route>
 
-
-        {/* --- Catch-all Not Found Route --- */}
+        {}
         <Route path="*" element={<NotFound />} />
 
       </Routes>

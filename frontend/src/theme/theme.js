@@ -1,30 +1,28 @@
-// src/theme/theme.js
 import { createTheme } from '@mui/material/styles';
-import { grey, blue, red, green, yellow } from '@mui/material/colors'; // Use yellow instead of orange
+import { grey, blue, red, green, yellow } from '@mui/material/colors'; 
 
-// Define the dark theme inspired by GitHub's dark mode
 const githubDarkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: blue[300], // Lighter blue for primary actions
+      main: blue[300], 
     },
     secondary: {
-      main: green[400], // Green accent
+      main: green[400], 
     },
     background: {
-      default: '#0d1117', // Very dark charcoal/almost black
-      paper: '#161b22',   // Lighter grey/charcoal for surfaces
+      default: '#0d1117', 
+      paper: '#161b22',   
     },
     text: {
-      primary: '#c9d1d9',   // Light grey/off-white for primary text
-      secondary: '#8b949e', // Dimmer grey for secondary text/icons
+      primary: '#c9d1d9',   
+      secondary: '#8b949e', 
     },
     error: { main: red[400] },
-    warning: { main: yellow[600] }, // Yellow for warning (like open status)
-    info: { main: blue[300] }, // Blue for info (like in progress)
-    success: { main: green[400] }, // Green for success (like resolved)
-    divider: '#30363d', // Dark grey divider
+    warning: { main: yellow[600] }, 
+    info: { main: blue[300] }, 
+    success: { main: green[400] }, 
+    divider: '#30363d', 
   },
   typography: {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
@@ -33,7 +31,7 @@ const githubDarkTheme = createTheme({
     h3: { fontSize: '1.5rem', fontWeight: 600 },
     h4: { fontSize: '1.25rem', fontWeight: 600 },
     h5: { fontSize: '1.1rem', fontWeight: 600 },
-    h6: { fontSize: '1rem', fontWeight: 600, color: '#8b949e' }, // Match secondary text
+    h6: { fontSize: '1rem', fontWeight: 600, color: '#8b949e' }, 
     button: {
         textTransform: 'none',
         fontWeight: 600,
@@ -43,31 +41,28 @@ const githubDarkTheme = createTheme({
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: '#161b22', // Paper background
-          boxShadow: 'none', // Flat look
-          borderBottom: '1px solid #30363d', // Subtle border
+          backgroundColor: '#161b22', 
+          boxShadow: 'none', 
+          borderBottom: '1px solid #30363d', 
         },
       },
     },
     MuiPaper: {
       defaultProps: {
-         elevation: 0, // Default to flat paper
+         elevation: 0, 
       },
       styleOverrides: {
          root: {
-             backgroundColor: '#161b22', // Ensure correct background
+             backgroundColor: '#161b22', 
              backgroundImage: 'none',
          },
-         // Example: Add border only if variant="outlined"
-         // outlined: {
-         //    border: '1px solid #30363d'
-         // }
+
       }
     },
     MuiTableContainer: {
         styleOverrides: {
             root: {
-                backgroundColor: 'transparent', // Use parent Paper background
+                backgroundColor: 'transparent', 
             }
         }
     },
@@ -77,7 +72,7 @@ const githubDarkTheme = createTheme({
           color: '#8b949e',
           fontWeight: 600,
           borderBottom: '1px solid #30363d',
-          whiteSpace: 'nowrap', // Prevent header text wrapping
+          whiteSpace: 'nowrap', 
         },
         body: {
           color: '#c9d1d9',
@@ -87,11 +82,10 @@ const githubDarkTheme = createTheme({
     },
      MuiChip: {
         styleOverrides: {
-            // Adjust chip styles for better contrast/look on new theme
+
             root: ({ ownerState, theme }) => ({
                fontWeight: 'bold',
-               // Use slightly adjusted colors or styles if needed based on theme.palette...
-               // Example: Making warning chip text darker for yellow background
+
                ...(ownerState.color === 'warning' && { color: grey[900] }),
             }),
         }
@@ -99,7 +93,7 @@ const githubDarkTheme = createTheme({
     MuiLink: {
         styleOverrides: {
             root: {
-                color: blue[300], // Primary blue
+                color: blue[300], 
                 textDecoration: 'none',
                 '&:hover': { textDecoration: 'underline' }
             }
@@ -107,33 +101,30 @@ const githubDarkTheme = createTheme({
     },
     MuiButton: {
         styleOverrides: {
-            // Example: Contrast button
-            // containedPrimary: {
-            //     color: '#ffffff', // Ensure text is white on blue button
-            // }
+
         }
     },
     MuiToggleButtonGroup: {
         styleOverrides: {
-            root: { backgroundColor: '#21262d' } // Slightly different group background
+            root: { backgroundColor: '#21262d' } 
         }
     },
      MuiToggleButton: {
          styleOverrides: {
              root: {
-                 color: '#8b949e', // Secondary text
-                 border: `1px solid #30363d`, // Divider color border
+                 color: '#8b949e', 
+                 border: `1px solid #30363d`, 
                  '&.Mui-selected': {
-                     color: '#c9d1d9', // Primary text when selected
-                     backgroundColor: 'rgba(56, 139, 253, 0.15)', // Primary blue with alpha
-                     borderColor: blue[300], // Primary blue border
+                     color: '#c9d1d9', 
+                     backgroundColor: 'rgba(56, 139, 253, 0.15)', 
+                     borderColor: blue[300], 
                      '&:hover': {
-                        backgroundColor: 'rgba(56, 139, 253, 0.25)', // Slightly darker on hover
+                        backgroundColor: 'rgba(56, 139, 253, 0.25)', 
                      }
                  },
                  '&:not(.Mui-selected):hover': {
-                     backgroundColor: '#21262d', // Hover background
-                     borderColor: '#8b949e', // Brighter border on hover
+                     backgroundColor: '#21262d', 
+                     borderColor: '#8b949e', 
                  }
              }
          }
@@ -141,4 +132,4 @@ const githubDarkTheme = createTheme({
   },
 });
 
-export default githubDarkTheme; // Export the theme
+export default githubDarkTheme; 

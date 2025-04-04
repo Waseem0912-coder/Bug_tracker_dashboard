@@ -1,7 +1,6 @@
-# api/serializers.py
 from rest_framework import serializers
 from .models import Bug
-# Import User model, Group model, password validation
+
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -10,7 +9,7 @@ class BugSerializer(serializers.ModelSerializer):
     """ Serializer for displaying Bug details. """
     status = serializers.CharField(source='get_status_display', read_only=True)
     priority = serializers.CharField(source='get_priority_display', read_only=True)
-    status_key = serializers.CharField(source='status', read_only=True) # Expose internal key
+    status_key = serializers.CharField(source='status', read_only=True) 
     class Meta:
         model = Bug
         fields = [ 'id', 'bug_id', 'subject', 'description', 'status', 'status_key', 'priority', 'created_at', 'updated_at', 'modified_count', ]
@@ -26,13 +25,13 @@ class BugStatusUpdateSerializer(serializers.Serializer):
 class UserRegistrationSerializer(serializers.ModelSerializer):
     """ Serializer for handling new user registration. """
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True, required=True, label="Confirm Password")
-    email = serializers.EmailField(required=True, max_length=254) # Standard max length
+    email = serializers.EmailField(required=True, max_length=254) 
 
     class Meta:
         model = User
         fields = ('username', 'email', 'password', 'password2')
         extra_kwargs = {
-            'password': {'write_only': True, 'style': {'input_type': 'password'}, 'required': True, 'validators': [validate_password]}, # Apply Django validators
+            'password': {'write_only': True, 'style': {'input_type': 'password'}, 'required': True, 'validators': [validate_password]}, 
             'username': {'required': True},
         }
 
@@ -50,13 +49,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         """ Check that password confirmation matches password. """
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password2": "Passwords do not match."})
-        # Password complexity is implicitly validated by 'validators' in extra_kwargs
+
         return data
 
     def create(self, validated_data):
         """ Create user and assign to 'Viewer' group. """
-        validated_data.pop('password2') # Remove confirmation field
-        user = User.objects.create_user(**validated_data) # Hashes password
+        validated_data.pop('password2') 
+        user = User.objects.create_user(**validated_data) 
         try:
             viewer_group = Group.objects.get(name='Viewer')
             user.groups.add(viewer_group)

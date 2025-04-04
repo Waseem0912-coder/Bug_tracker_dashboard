@@ -1,6 +1,5 @@
-# api/admin.py
 from django.contrib import admin
-from .models import Bug, BugModificationLog, ProcessedEmail # Use .models because it's in the same app
+from .models import Bug, BugModificationLog, ProcessedEmail 
 
 @admin.register(Bug)
 class BugAdmin(admin.ModelAdmin):

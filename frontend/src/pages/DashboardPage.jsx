@@ -1,4 +1,3 @@
-// src/pages/DashboardPage.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { getBugModifications } from '../services/api';
 import { useTheme } from '@mui/material/styles';
@@ -12,21 +11,19 @@ import {
 
 const PRIORITIES = ['all', 'high', 'medium', 'low'];
 
-// --- NEW: Helper to get bar color based on filter ---
 const getBarColor = (priority, theme) => {
     switch (priority?.toLowerCase()) {
         case 'high':
-            return theme.palette.error.main; // Red
+            return theme.palette.error.main; 
         case 'medium':
-            return theme.palette.warning.main; // Yellow
+            return theme.palette.warning.main; 
         case 'low':
-            return theme.palette.grey[500]; // Grey (Neutral for low priority)
+            return theme.palette.grey[500]; 
         case 'all':
         default:
-            return theme.palette.primary.main; // Blue (Default/All)
+            return theme.palette.primary.main; 
     }
 };
-// ---------------------------------------------------
 
 function DashboardPage() {
   const [chartData, setChartData] = useState([]);
@@ -56,9 +53,7 @@ function DashboardPage() {
       return `${priorityName} Priority Bug Modifications`;
   }
 
-  // --- Determine current bar color ---
   const currentBarColor = getBarColor(selectedPriority, theme);
-  // ---------------------------------
 
   return (
     <Container maxWidth="lg">
@@ -92,7 +87,7 @@ function DashboardPage() {
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
                 <Bar
                   dataKey="count"
-                  fill={currentBarColor} // Use dynamic color
+                  fill={currentBarColor} 
                   name="Modifications"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={60}
