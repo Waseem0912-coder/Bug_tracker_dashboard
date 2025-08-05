@@ -1,3 +1,4 @@
+https://github.com/Waseem0912-coder/Bug_tracker_dashboard/tree/submission
 # Bug Tracker from Email - Take-Home Test Submission
 
 This Project features a Django backend that processes bug reports sent via email and a React frontend for viewing and analyzing bug data.

@@ -1,0 +1,253 @@
+issue_url,issue_title,description_text,all_comments_concatenated
+https://issuetracker.google.com/issues/399131921,ComposeView does not fling when used in a plain window,"Jetpack Compose version: compose-bom:2025.02.00
+Jetpack Compose component(s) used: LazyColumn
+Android Studio Build: 2024.2.1
+Kotlin version: 2.0.0
+Steps to Reproduce or Code Sample to Reproduce: Run this example, then enable the accessibility service. Try flinging the LazyColumn.
+// containing class must also extend LifecycleOwner and SavedStateRegistryOwner
+// A complete sample: https://github.com/aug16vcc/AccessibilityServiceWithCompose/blob/master/app/src/main/java/androidx/lifecycle/accessibilityservice/ComponentAccessibilityService.kt
+class MyAccessibilityService() : AccessibilityService(), LifecycleOwner, SavedStateRegistryOwner {
+    private lateinit var mView: ComposeView
+    private lateinit var wm: WindowManager
+    private val dispatcher = ServiceLifecycleDispatcher(this)
+    override val lifecycle: Lifecycle
+        get() = dispatcher.lifecycle
+    override val savedStateRegistry: SavedStateRegistry
+        get() = savedStateRegistryController.savedStateRegistry
+
+    @CallSuper
+    override fun onCreate() {
+        dispatcher.onServicePreSuperOnCreate()
+        super.onCreate()
+        savedStateRegistryController.performRestore(null)
+    }
+
+    @CallSuper
+    override fun onDestroy() {
+        dispatcher.onServicePreSuperOnDestroy()
+        super.onDestroy()
+    }
+
+    private val savedStateRegistryController: SavedStateRegistryController by lazy(
+        LazyThreadSafetyMode.NONE
+    ) {
+        SavedStateRegistryController.create(this)
+    }
+
+
+    // business logic
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val r = super.onStartCommand(intent, flags, startId)
+        val lp: WindowManager.LayoutParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT)
+        if (mView?.windowToken != null) return
+        wm = getSystemService(WINDOW_SERVICE) as WindowManager
+        mView = ComposeView(this)
+        mView?.setViewTreeLifecycleOwner(this)
+        mView?.setViewTreeSavedStateRegistryOwner(this)
+        mView?.setContent {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(50) { index ->
+                    Text(text = ""Item $index"", fontSize = 18.sp)
+                }
+            }
+        }
+        wm.addView(mView, lp)
+        return r
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // do nothing
+    }
+}","--- Comment ID: comment2 ---
+Author: yi...@gmail.com
+Timestamp: 2025-02-25 23:12:43 -0500 (local)
+2025-02-26 04:12:43 +0000 (UTC)
+2025-02-25 20:12:43 -0800 (MTV)
+Text:
+Recordings from a normal Compose activity and an accessibility service.
+
+--- Comment ID: comment3 ---
+Author: lp...@google.com
+Timestamp: 2025-02-26 08:07:54 -0500 (local)
+2025-02-26 13:07:54 +0000 (UTC)
+2025-02-26 05:07:54 -0800 (MTV)
+Text:
+Levi, it's not clear whether this is a problem with pointer input / coroutines / our fling logic. Could you take a quick look and see if there are some callbacks missing / we are getting strange input values inside lazy / scrollable?
+
+--- Comment ID: comment5 ---
+Author: yi...@gmail.com
+Timestamp: 2025-02-26 15:49:07 -0500 (local)
+2025-02-26 20:49:07 +0000 (UTC)
+2025-02-26 12:49:07 -0800 (MTV)
+Text:
+I did some additional testing and it appears to be a coroutine issue.
+When you perform a coroutine-dependent function on the scrollable item (for example, I tried AnchoredDraggableState.animateTo()), there is no visible effect if the ComposeView is an accessibility window.
+Everything is again working correctly in a normal ComposeActivity.
+
+--- Comment ID: comment6 ---
+Author: yi...@gmail.com
+Timestamp: 2025-03-11 18:28:45 -0400 (local)
+2025-03-11 22:28:45 +0000 (UTC)
+2025-03-11 15:28:45 -0700 (MTV)
+Text:
+What is the status of this bug now?
+
+--- Comment ID: comment7 ---
+Author: yi...@gmail.com
+Timestamp: 2025-03-28 08:32:25 -0400 (local)
+2025-03-28 12:32:25 +0000 (UTC)
+2025-03-28 05:32:25 -0700 (MTV)
+Text:
+What is the status of this bug now? Is there a workaround?"
+https://issuetracker.google.com/issues/405946938,LazyList overhead per item is high relative to time to compose actual row content,"Compose Version: 1.7.8 Traced Device: Samsung A32 5G Release-like build, baseline profile installed, debuggable=false
+On this device we see ~.5-1ms of overhead per item relative to those items just being in a Row/Column.
+Attached images show the zoomed out view of a set LazyColumn's children composition, as well as a zoom in to a specific Row.",No subsequent comments found.
+https://issuetracker.google.com/issues/392668960,ClassCastException when calling GraphicsLayer.draw() with non-DisplayListCanvas backed Canvas,"Jetpack Compose version: 2025.01.00
+Jetpack Compose component(s) used: Compose Graphics Ui
+Android Studio Build: Android Studio Ladybug Feature Drop | 2024.2.2 Canary 6
+Kotlin version: 2.0.0
+Steps to Reproduce or Code Sample to Reproduce:
+When using a GraphicsLayer to modify how a composable is drawn, if the Composable will be drawn to a canvas other than a DisplayListCanvas then the GraphicsLayer.draw call will fail on API < 29. This is something that we've seen while using the facebook-screenshot-testing library for screenshot testing, as it renders the view bitmaps with View.draw() in this manner.
+I've attached a sample project to reproduce the issue. Clicking anywhere on the screen on an API <=28 emulator will produce the attached stack trace.
+Steps to reproduce:
+Draw a GraphicsLayer in a Composable's drawWithContent block using drawLayer(graphicsLayer).
+Try to draw the view to a standard Bitmap backed Canvas.
+💥
+Stack trace (if applicable):
+java.lang.ClassCastException: android.graphics.Canvas cannot be cast to android.view.DisplayListCanvas
+ at androidx.compose.ui.graphics.layer.GraphicsLayerV23.draw(GraphicsLayerV23.android.kt:339)
+ at androidx.compose.ui.graphics.layer.GraphicsLayer.draw$ui_graphics_release(AndroidGraphicsLayer.android.kt:548)
+ at androidx.compose.ui.graphics.layer.GraphicsLayerKt.drawLayer(GraphicsLayer.kt:52)
+ at com.example.graphicslayertest.MainActivityKt.Screen$lambda$2(MainActivity.kt:104)
+ at com.example.graphicslayertest.MainActivityKt.$r8$lambda$xc0_eqAeEZrwzPd8ROSw8WwpuJA(Unknown Source:0)
+ at com.example.graphicslayertest.MainActivityKt$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+ at androidx.compose.ui.draw.DrawWithContentModifier.draw(DrawModifier.kt:422)
+ at androidx.compose.ui.node.LayoutNodeDrawScope.drawDirect-eZhPAX0$ui_release(LayoutNodeDrawScope.kt:110)
+ at androidx.compose.ui.node.LayoutNodeDrawScope.draw-eZhPAX0$ui_release(LayoutNodeDrawScope.kt:89)
+ at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:450)
+ at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:439)
+ at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+ at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:447)
+ at androidx.compose.ui.node.NodeCoordinator.access$drawContainedDrawModifiers(NodeCoordinator.kt:58)
+ at androidx.compose.ui.node.NodeCoordinator$drawBlock$1$1.invoke(NodeCoordinator.kt:469)
+ at androidx.compose.ui.node.NodeCoordinator$drawBlock$1$1.invoke(NodeCoordinator.kt:468)
+ at androidx.compose.runtime.snapshots.Snapshot$Companion.observe(Snapshot.kt:2441)
+ at androidx.compose.runtime.snapshots.SnapshotStateObserver$ObservedScopeMap.observe(SnapshotStateObserver.kt:502)
+ at androidx.compose.runtime.snapshots.SnapshotStateObserver.observeReads(SnapshotStateObserver.kt:258)
+ at androidx.compose.ui.node.OwnerSnapshotObserver.observeReads$ui_release(OwnerSnapshotObserver.kt:133)
+ at androidx.compose.ui.node.NodeCoordinator$drawBlock$1.invoke(NodeCoordinator.kt:468)
+ at androidx.compose.ui.node.NodeCoordinator$drawBlock$1.invoke(NodeCoordinator.kt:466)
+ at androidx.compose.ui.platform.RenderNodeLayer.drawLayer(RenderNodeLayer.android.kt:303)
+ at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:434)
+ at androidx.compose.ui.node.LayoutNode.draw$ui_release(LayoutNode.kt:1000)
+ at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+ at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:447)
+ at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:439)
+ at androidx.compose.ui.node.LayoutNode.draw$ui_release(LayoutNode.kt:1000)
+ at androidx.compose.ui.platform.AndroidComposeView.dispatchDraw(AndroidComposeView.android.kt:1564)
+ at android.view.View.draw(View.java:20210)
+ at android.view.View.draw(View.java:20077)
+ at android.view.ViewGroup.drawChild(ViewGroup.java:4333)
+ at android.view.ViewGroup.dispatchDraw(ViewGroup.java:4112)
+ at android.view.View.draw(View.java:20210)
+ at com.example.graphicslayertest.MainActivity.onCreate$lambda$1(MainActivity.kt:77)
+ at com.example.graphicslayertest.MainActivity.$r8$lambda$Xv6cMo0lMaCf7SL69GuSPWBBfnQ(Unknown Source:0)
+ at com.example.graphicslayertest.MainActivity$$ExternalSyntheticLambda0.invoke(D8$$SyntheticClass:0)
+ at androidx.compose.foundation.ClickableNode$clickPointerInput$3.invoke-k-4lQ0M(Clickable.kt:639)
+ at androidx.compose.foundation.ClickableNode$clickPointerInput$3.invoke(Clickable.kt:633)
+ at androidx.compose.foundation.gestures.TapGestureDetectorKt$detectTapAndPress$2$1.invokeSuspend(TapGestureDetector.kt:255)
+ at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+ at kotlinx.coroutines.DispatchedTaskKt.resume(DispatchedTask.kt:179)
+ at kotlinx.coroutines.DispatchedTaskKt.dispatch(DispatchedTask.kt:168)
+ at kotlinx.coroutines.CancellableContinuationImpl.dispatchResume(CancellableContinuationImpl.kt:474)
+ at kotlinx.coroutines.CancellableContinuationImpl.resumeImpl(CancellableContinuationImpl.kt:508)
+ at kotlinx.coroutines.CancellableContinuationImpl.resumeImpl$default(CancellableContinuationImpl.kt:497)
+ at kotlinx.coroutines.CancellableContinuationImpl.resumeWith(CancellableContinuationImpl.kt:368)
+ at androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNodeImpl$PointerEventHandlerCoroutine.offerPointerEvent(SuspendingPointerInputFilter.kt:719)
+ at androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNodeImpl.dispatchPointerEvent(SuspendingPointerInputFilter.kt:598)
+ at androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNodeImpl.onPointerEvent-H0pRuoY(SuspendingPointerInputFilter.kt:620)
+ at androidx.compose.foundation.AbstractClickableNode.onPointerEvent-H0pRuoY(Clickable.kt:1044)
+ at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:387)
+ at androidx.compose.ui.input.pointer.NodeParent.dispatchMainEventPass(HitPathTracker.kt:229)
+ at androidx.compose.ui.input.pointer.HitPathTracker.dispatchChanges(HitPathTracker.kt:144)
+ at androidx.compose.ui.input.pointer.PointerInputEventProcessor.process-BIzXfog(PointerInputEventProcessor.kt:120)
+ at androidx.compose.ui.platform.AndroidComposeView.sendMotionEvent-8iAsVTc(AndroidComposeView.android.kt:1994)
+ at androidx.compose.ui.platform.AndroidComposeView.handleMotionEvent-8iAsVTc(AndroidComposeView.android.kt:1945)
+ at androidx.compose.ui.platform.AndroidComposeView.dispatchTouchEvent(AndroidComposeView.android.kt:1829)
+ at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3030)
+ at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2719)
+ at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3030)
+ at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2719)
+ at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3030)
+ at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2719)
+ at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3030)
+ at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2719)
+ at com.android.internal.policy.DecorView.superDispatchTouchEvent(DecorView.java:440)
+ at com.android.internal.policy.PhoneWindow.superDispatchTouchEvent(PhoneWindow.java:1830)
+ at android.app.Activity.dispatchTouchEvent(Activity.java:3400)
+ at com.android.internal.policy.DecorView.dispatchTouchEvent(DecorView.java:398)
+ at android.view.View.dispatchPointerEvent(View.java:12752)
+ at android.view.ViewRootImpl$ViewPostImeInputStage.processPointerEvent(ViewRootImpl.java:5106)
+ at android.view.ViewRootImpl$ViewPostImeInputStage.onProcess(ViewRootImpl.java:4909)
+ at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:4426)
+ at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:4479)
+ at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:4445)
+ at android.view.ViewRootImpl$AsyncInputStage.forward(ViewRootImpl.java:4585)
+ at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:4453)
+ at android.view.ViewRootImpl$AsyncInputStage.apply(ViewRootImpl.java:4642)
+ at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:4426)
+ at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:4479)
+ at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:4445)
+ at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:4453)
+ at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:4426)
+ at android.view.ViewRootImpl.deliverInputEvent(ViewRootImpl.java:7092)
+ at android.view.ViewRootImpl.doProcessInputEvents(ViewRootImpl.java:7061)
+ at android.view.ViewRootImpl.enqueueInputEvent(ViewRootImpl.java:7022)
+ at android.view.ViewRootImpl$WindowInputEventReceiver.onInputEvent(ViewRootImpl.java:7195)
+ at android.view.InputEventReceiver.dispatchInputEvent(InputEventReceiver.java:186)
+ at android.os.MessageQueue.nativePollOnce(Native Method)
+ at android.os.MessageQueue.next(MessageQueue.java:326)
+ at android.os.Looper.loop(Looper.java:160)
+ at android.app.ActivityThread.main(ActivityThread.java:6669)
+
+                                                                                                     at java.lang.reflect.Method.invoke(Native Method)
+ at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:493)
+ at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:858)
+ Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [androidx.compose.ui.platform.MotionDurationScaleImpl@2d185d5, androidx.compose.runtime.BroadcastFrameClock@1bb11ea, StandaloneCoroutine{Cancelling}@1181cdb, AndroidUiDispatcher@c713378]","--- Comment ID: comment2 ---
+Author: rh...@dropbox.com
+Timestamp: 2025-01-28 14:59:31 -0500 (local)
+2025-01-28 19:59:31 +0000 (UTC)
+2025-01-28 11:59:31 -0800 (MTV)
+Text:
+FYI, in addition to the facebook screenshot testing library, having a composable that uses the graphics layer to draw also appears to break the Android Screenshot APIs with the same stack trace."
+https://issuetracker.google.com/issues/418025711,ModifierLocalProvider doesn't work when provided using ModifierNodeElement,"Jetpack Compose version: 1.8.1
+Code Sample to Reproduce:
+val key = modifierLocalOf { 0 }
+
+data class Factory(val value: Int) : ModifierNodeElement<Provider>() {
+    override fun create(): Provider = Provider(value)
+    override fun update(node: Provider) = Unit//redacted for shortness
+}
+
+class Provider(override val value: Int) : ModifierLocalProvider<Int>, Modifier.Node() {
+    override val key = com.lyft.android.contextualhome.screens.key
+}
+
+class Consumer : ModifierLocalConsumer, Modifier.Node() {
+    override fun onModifierLocalsUpdated(scope: ModifierLocalReadScope) {
+        println(""Value of local: ${with (scope) { key.current }}"")
+    }
+}
+
+@Composable
+fun Test() {
+  Box(Modifier.then(Provider(42).then(Consumer())))//outputs 42
+  Box(Modifier.then(Factory(42).then(Consumer())))//outputs 0
+}",No subsequent comments found.
